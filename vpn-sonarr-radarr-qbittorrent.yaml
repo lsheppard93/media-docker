@@ -1,0 +1,84 @@
+version: "3"
+services:
+  vpn:
+    image: ghcr.io/bubuntux/nordvpn
+    container_name: nordvpn
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      - TOKEN=x
+      - CONNECT=nz
+      - TECHNOLOGY=NordLynx
+      - NETWORK=192.168.50.0/24
+    ports:
+      - 8081:8081 #vpn
+      - 8091:8091 #qbittorrent
+      - 6882:6882 #qbittorrent
+      - 6882:6882/udp #qbittorrent
+      - 8989:8989 #sonarr
+      - 7878:7878 #radarr
+      - 9117:9117 #jackett
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: service:vpn
+    depends_on:
+      - vpn
+    environment:
+      - PUID=1000
+      - PGID=100
+      - TZ=Etc/UTC
+      - WEBUI_PORT=8091
+      - TORRENTING_PORT=6882
+    volumes:
+      - /share/General File Storage/Docker Files/qBittorrent-vpn:/config
+      - /share/TV/downloads/completed:/downloads
+    restart: unless-stopped
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    network_mode: service:vpn
+    environment:
+      - PUID=1000
+      - PGID=100
+      - TZ=Etc/UTC
+    volumes:
+      - /share/General File Storage/Docker Files/sonarr:/config
+      - /share/TV/TV:/tv
+      - /share/TV/downloads/completed:/downloads
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    network_mode: service:vpn
+    environment:
+      - PUID=1000
+      - PGID=100
+      - TZ=Etc/UTC
+    volumes:
+      - /share/General File Storage/Docker Files/radarr:/config
+      - /share/Movies/Movies:/movies 
+      - /share/TV/downloads/completed:/downloads 
+    restart: unless-stopped
+
+  jackett:
+    image: linuxserver/jackett:latest
+    container_name: jackett
+    environment:
+      - PUID=1000
+      - PGID=100
+      - TZ=Etc/UTC
+    volumes:
+      - /share/General File Storage/Docker Files/jackett:/config
+    network_mode: service:vpn
+    restart: unless-stopped
+
+networks:
+  vpn_network:
+    external: true
